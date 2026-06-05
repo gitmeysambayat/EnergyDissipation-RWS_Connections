@@ -2,76 +2,245 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Cumulative Energy — Batch & Model Selector (with Plots)</title>
+<title>Cumulative Energy, Batch & Model Selector (with Plots)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="favicon_3dmbc.png">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
-  :root { --plot-height: 600px; --plot-width: 1100px; --ui-font: 14px; }
-  body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 24px; }
-  h1 { margin: 0 0 12px; font-size: 18px; }
-  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0; }
-  label { font-weight: 600; }
-  select, button, input[type="text"] { padding: 6px 10px; font-size: var(--ui-font); }
-  .models { margin-top: 8px; display: grid; grid-template-columns: repeat(10, minmax(160px, 1fr)); gap: 6px; }
-  .codebox { white-space: pre; background:#f6f8fa; border:1px solid #d0d7de; padding:12px; border-radius:6px; overflow:auto; }
-  .muted { color:#666; font-size:13px; }
-  .tabs { display: flex; gap: 8px; margin-top: 12px; }
-  .tabbtn { border:1px solid #d0d7de; background:#fff; padding:6px 10px; border-radius:6px; cursor:pointer; }
-  .tabbtn.active { background:#eef2f7; }
-  /* Center the plots area horizontally and keep both canvases identical */
-  #plots { margin-top: 12px; display: flex; justify-content: center; }
-  #plot-normalised, #plot-actual {
-    width: min(var(--plot-width), 100%);
-    height: var(--plot-height);
-    margin: 0 auto;   /* extra safety for centring */
+  :root {
+    --line:#d7dde8;
+    --line2:#e7ebf2;
+    --muted:#64748b;
+    --ink:#0f172a;
+    --paper:#ffffff;
+    --soft:#f6f7fb;
+    --plot-height:min(600px, calc(100vh - 205px));
+    --ui-font:12px;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ min-height:100%; }
+  body {
+    font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    margin:0;
+    color:var(--ink);
+    background:var(--soft);
+    font-size:var(--ui-font);
+  }
+  header{
+    padding:8px 12px 6px 12px;
+    background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);
+    border-bottom:1px solid var(--line);
+  }
+  .headerRow{ position:relative; padding-right:250px; min-height:60px; }
+  .titleWrap{ min-width:0; }
+  .title{ font-weight:700; font-size:14px; line-height:1.25; }
+  .metaLine{ margin-top:4px; color:var(--muted); font-size:10.2px; line-height:1.3; white-space:nowrap; }
+  .brandBox{ position:absolute; top:0; right:0; display:flex; align-items:flex-start; gap:10px; }
+  .brandBox img{ display:block; width:auto; object-fit:contain; background:transparent; }
+  .brandBox .cityBrand{ height:56px; }
+  .brandBox .labBrand{ height:40px; }
+  .energyLayout{
+    display:grid;
+    grid-template-columns:minmax(520px, 590px) minmax(0, 1fr);
+    gap:10px;
+    align-items:start;
+    padding:8px 10px;
+  }
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px;
+    box-shadow:0 1px 2px rgba(15,23,42,0.05);
+  }
+  h1, h2{ margin:0; font-size:14px; line-height:1.25; }
+  .plotHead{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+  label { font-weight:600; }
+  select, button {
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:#fff;
+    color:var(--ink);
+    font:inherit;
+    padding:5px 8px;
+  }
+  button{ cursor:pointer; font-weight:700; }
+  button.primary, .tabbtn.active{ background:#eaf1ff; border-color:#9ebcff; color:#0b3b91; }
+  .muted { color:var(--muted); font-size:11.5px; }
+  .divider{ height:1px; background:var(--line2); margin:8px 0; }
+  .tabs { display:flex; gap:8px; margin-top:8px; }
+  .tabbtn { border:1px solid var(--line); background:#fff; padding:5px 10px; border-radius:8px; cursor:pointer; }
+  #plots { margin-top:8px; display:block; width:100%; }
+  #plot-normalised, #plot-actual { width:100%; height:var(--plot-height); margin:0; }
+  table{ border-collapse:collapse; width:100%; }
+  .thesis caption{ caption-side:top; font-weight:700; margin-bottom:4px; font-size:11px; white-space:nowrap; }
+  .thesis th, .thesis td{ border:1px solid var(--line2); padding:4px 5px; text-align:center; }
+  .thesis th{ background:#f8fafc; }
+  .case-matrix td.case-cell{
+    font-family:Consolas, "Liberation Mono", monospace;
+    cursor:pointer;
+    font-weight:700;
+    background:#fff;
+  }
+  .case-matrix td.case-cell:hover{ background:#eff6ff; }
+  .case-matrix td.case-cell.sel{ background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+  .case-matrix td.case-cell.disabled{ color:#94a3b8; background:#f8fafc; cursor:not-allowed; }
+  .specPick{ margin-top:8px; }
+  .specGrid{
+    display:grid;
+    grid-template-columns:70px 18px 92px 18px 92px 18px 82px;
+    justify-content:center;
+    align-items:center;
+  }
+  .specTop{ margin-bottom:4px; font-size:11px; color:var(--muted); }
+  .specBottom{ margin-top:5px; font-size:10.5px; color:var(--muted); }
+  .specTop .left{ grid-column:1; text-align:center; font-weight:700; }
+  .specTop .right{ grid-column:5 / span 3; text-align:center; }
+  .specDot{ text-align:center; font-size:16px; color:rgba(15,23,42,0.55); }
+  .specSel{
+    width:100%;
+    padding:4px 6px;
+    border-radius:8px;
+    border:1px solid rgba(15,23,42,0.30);
+    background:#fff;
+    font-size:12px;
+    font-weight:700;
+    text-align:center;
+    text-align-last:center;
+  }
+  .models{
+    margin-top:8px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    max-height:84px;
+    overflow:auto;
+  }
+  .models label{
+    display:inline-flex;
+    gap:5px;
+    align-items:center;
+    border:1px solid var(--line2);
+    border-radius:999px;
+    padding:4px 8px;
+    background:#f8fafc;
+    font-size:11px;
+    white-space:nowrap;
+  }
+  .check{ display:inline-flex; align-items:center; gap:5px; }
+  @media (max-width: 980px){
+    .headerRow{ padding-right:0; min-height:0; }
+    .brandBox{ position:static; margin-top:6px; }
+    .metaLine{ white-space:normal; }
+    .energyLayout{ grid-template-columns:1fr; }
+  }
+  @media (max-width: 1280px){
+    .energyLayout{ grid-template-columns:1fr; }
+    #plot-normalised, #plot-actual{ height:600px; }
   }
 </style>
 </head>
 <body>
-  <h1>Cumulative Energy — Batch & Model Selector</h1>
-  <div class="row">
-    <label>Profile:
-      <select id="profile"></select>
-    </label>
-    <label>Grade:
-      <select id="grade"></select>
-    </label>
-    <label>StoD:
-      <select id="stod"></select>
-    </label>
-    <label><input type="checkbox" id="includeC100"> include C100</label>
-  </div>
+  <header>
+    <div class="headerRow">
+      <div class="titleWrap">
+        <div class="title">Cumulative energy dissipation selector</div>
+        <div class="metaLine">Reduced web section batches, case selection, and comparative energy plots.</div>
+      </div>
+      <div class="brandBox" aria-label="Laboratory and institutional logos">
+        <img class="labBrand" src="3DMBC_logo.png" alt="3DMBC logo">
+        <img class="cityBrand" src="city-st-georges-responsive-logo.svg" alt="City St George's, University of London logo">
+      </div>
+    </div>
+  </header>
 
-  <div id="meta" class="muted"></div>
+  <main class="energyLayout">
+    <section class="card controlPanel">
+      <h1>Case guide and specimen classification</h1>
 
-  <div class="row">
-    <label>Filter models (substring): <input type="text" id="modelFilter" placeholder="e.g. C03_"></label>
-    <button id="applyFilter">Apply</button>
-    <button id="clearFilter">Clear</button>
-    <button id="selectAll">Select all</button>
-    <button id="selectNone">Select none</button>
-  </div>
+      <div class="specPick" aria-label="Specimen classification selector">
+        <div class="specGrid specTop">
+          <div class="left">Batch label</div>
+          <div class="right">Combination of (<i>S</i>/<i>h</i>) and (<i>d</i><sub>o</sub>/<i>h</i>)</div>
+        </div>
+        <div class="specGrid specRow">
+          <select id="stod" class="specSel" aria-label="Beam span-to-depth ratio"></select>
+          <div class="specDot">.</div>
+          <select id="profile" class="specSel" aria-label="Beam profile"></select>
+          <div class="specDot">.</div>
+          <select id="grade" class="specSel" aria-label="Steel grade"></select>
+          <div class="specDot">.</div>
+          <select id="pickCase" class="specSel" aria-label="Case ID"></select>
+        </div>
+        <div class="specGrid specBottom" aria-hidden="true">
+          <div>Beam span-to-depth<br>ratio</div>
+          <div></div>
+          <div>Beam profile (IPE)</div>
+          <div></div>
+          <div>Beam steel<br>grade</div>
+          <div></div>
+          <div>Case ID</div>
+        </div>
+      </div>
 
-  <div id="models" class="models"></div>
+      <div class="divider"></div>
 
-  <div class="row">
-    <button id="genNormalised">Generate normalised call</button>
-    <button id="genActual">Generate actual call</button>
-    <button id="plotSelected">Plot selected</button>
-  </div>
+      <table class="thesis case-matrix" id="caseMatrix">
+        <caption>Parametric combinations of (<i>S</i>/<i>h</i>) and (<i>d</i><sub>o</sub>/<i>h</i>) in each batch of analysis</caption>
+        <thead>
+          <tr>
+            <th></th>
+            <th colspan="10">(<i>d</i><sub>o</sub>/<i>h</i>)%</th>
+          </tr>
+          <tr>
+            <th>(<i>S</i>/<i>h</i>)%</th>
+            <th>30</th><th>35</th><th>40</th><th>45</th><th>50</th><th>55</th><th>60</th><th>65</th><th>70</th><th>75</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th>60</th><td class="case-cell" data-do="30" data-sh="60" data-case="C00">C00</td><td class="case-cell" data-do="35" data-sh="60" data-case="C10">C10</td><td class="case-cell" data-do="40" data-sh="60" data-case="C20">C20</td><td class="case-cell" data-do="45" data-sh="60" data-case="C30">C30</td><td class="case-cell" data-do="50" data-sh="60" data-case="C40">C40</td><td class="case-cell" data-do="55" data-sh="60" data-case="C50">C50</td><td class="case-cell" data-do="60" data-sh="60" data-case="C60">C60</td><td class="case-cell" data-do="65" data-sh="60" data-case="C70">C70</td><td class="case-cell" data-do="70" data-sh="60" data-case="C80">C80</td><td class="case-cell" data-do="75" data-sh="60" data-case="C90">C90</td></tr>
+          <tr><th>80</th><td class="case-cell" data-do="30" data-sh="80" data-case="C01">C01</td><td class="case-cell" data-do="35" data-sh="80" data-case="C11">C11</td><td class="case-cell" data-do="40" data-sh="80" data-case="C21">C21</td><td class="case-cell" data-do="45" data-sh="80" data-case="C31">C31</td><td class="case-cell" data-do="50" data-sh="80" data-case="C41">C41</td><td class="case-cell" data-do="55" data-sh="80" data-case="C51">C51</td><td class="case-cell" data-do="60" data-sh="80" data-case="C61">C61</td><td class="case-cell" data-do="65" data-sh="80" data-case="C71">C71</td><td class="case-cell" data-do="70" data-sh="80" data-case="C81">C81</td><td class="case-cell" data-do="75" data-sh="80" data-case="C91">C91</td></tr>
+          <tr><th>100</th><td class="case-cell" data-do="30" data-sh="100" data-case="C02">C02</td><td class="case-cell" data-do="35" data-sh="100" data-case="C12">C12</td><td class="case-cell" data-do="40" data-sh="100" data-case="C22">C22</td><td class="case-cell" data-do="45" data-sh="100" data-case="C32">C32</td><td class="case-cell" data-do="50" data-sh="100" data-case="C42">C42</td><td class="case-cell" data-do="55" data-sh="100" data-case="C52">C52</td><td class="case-cell" data-do="60" data-sh="100" data-case="C62">C62</td><td class="case-cell" data-do="65" data-sh="100" data-case="C72">C72</td><td class="case-cell" data-do="70" data-sh="100" data-case="C82">C82</td><td class="case-cell" data-do="75" data-sh="100" data-case="C92">C92</td></tr>
+          <tr><th>120</th><td class="case-cell" data-do="30" data-sh="120" data-case="C03">C03</td><td class="case-cell" data-do="35" data-sh="120" data-case="C13">C13</td><td class="case-cell" data-do="40" data-sh="120" data-case="C23">C23</td><td class="case-cell" data-do="45" data-sh="120" data-case="C33">C33</td><td class="case-cell" data-do="50" data-sh="120" data-case="C43">C43</td><td class="case-cell" data-do="55" data-sh="120" data-case="C53">C53</td><td class="case-cell" data-do="60" data-sh="120" data-case="C63">C63</td><td class="case-cell" data-do="65" data-sh="120" data-case="C73">C73</td><td class="case-cell" data-do="70" data-sh="120" data-case="C83">C83</td><td class="case-cell" data-do="75" data-sh="120" data-case="C93">C93</td></tr>
+          <tr><th>140</th><td class="case-cell" data-do="30" data-sh="140" data-case="C04">C04</td><td class="case-cell" data-do="35" data-sh="140" data-case="C14">C14</td><td class="case-cell" data-do="40" data-sh="140" data-case="C24">C24</td><td class="case-cell" data-do="45" data-sh="140" data-case="C34">C34</td><td class="case-cell" data-do="50" data-sh="140" data-case="C44">C44</td><td class="case-cell" data-do="55" data-sh="140" data-case="C54">C54</td><td class="case-cell" data-do="60" data-sh="140" data-case="C64">C64</td><td class="case-cell" data-do="65" data-sh="140" data-case="C74">C74</td><td class="case-cell" data-do="70" data-sh="140" data-case="C84">C84</td><td class="case-cell" data-do="75" data-sh="140" data-case="C94">C94</td></tr>
+          <tr><th>160</th><td class="case-cell" data-do="30" data-sh="160" data-case="C05">C05</td><td class="case-cell" data-do="35" data-sh="160" data-case="C15">C15</td><td class="case-cell" data-do="40" data-sh="160" data-case="C25">C25</td><td class="case-cell" data-do="45" data-sh="160" data-case="C35">C35</td><td class="case-cell" data-do="50" data-sh="160" data-case="C45">C45</td><td class="case-cell" data-do="55" data-sh="160" data-case="C55">C55</td><td class="case-cell" data-do="60" data-sh="160" data-case="C65">C65</td><td class="case-cell" data-do="65" data-sh="160" data-case="C75">C75</td><td class="case-cell" data-do="70" data-sh="160" data-case="C85">C85</td><td class="case-cell" data-do="75" data-sh="160" data-case="C95">C95</td></tr>
+          <tr><th>180</th><td class="case-cell" data-do="30" data-sh="180" data-case="C06">C06</td><td class="case-cell" data-do="35" data-sh="180" data-case="C16">C16</td><td class="case-cell" data-do="40" data-sh="180" data-case="C26">C26</td><td class="case-cell" data-do="45" data-sh="180" data-case="C36">C36</td><td class="case-cell" data-do="50" data-sh="180" data-case="C46">C46</td><td class="case-cell" data-do="55" data-sh="180" data-case="C56">C56</td><td class="case-cell" data-do="60" data-sh="180" data-case="C66">C66</td><td class="case-cell" data-do="65" data-sh="180" data-case="C76">C76</td><td class="case-cell" data-do="70" data-sh="180" data-case="C86">C86</td><td class="case-cell" data-do="75" data-sh="180" data-case="C96">C96</td></tr>
+          <tr><th>200</th><td class="case-cell" data-do="30" data-sh="200" data-case="C07">C07</td><td class="case-cell" data-do="35" data-sh="200" data-case="C17">C17</td><td class="case-cell" data-do="40" data-sh="200" data-case="C27">C27</td><td class="case-cell" data-do="45" data-sh="200" data-case="C37">C37</td><td class="case-cell" data-do="50" data-sh="200" data-case="C47">C47</td><td class="case-cell" data-do="55" data-sh="200" data-case="C57">C57</td><td class="case-cell" data-do="60" data-sh="200" data-case="C67">C67</td><td class="case-cell" data-do="65" data-sh="200" data-case="C77">C77</td><td class="case-cell" data-do="70" data-sh="200" data-case="C87">C87</td><td class="case-cell" data-do="75" data-sh="200" data-case="C97">C97</td></tr>
+          <tr><th>220</th><td class="case-cell" data-do="30" data-sh="220" data-case="C08">C08</td><td class="case-cell" data-do="35" data-sh="220" data-case="C18">C18</td><td class="case-cell" data-do="40" data-sh="220" data-case="C28">C28</td><td class="case-cell" data-do="45" data-sh="220" data-case="C38">C38</td><td class="case-cell" data-do="50" data-sh="220" data-case="C48">C48</td><td class="case-cell" data-do="55" data-sh="220" data-case="C58">C58</td><td class="case-cell" data-do="60" data-sh="220" data-case="C68">C68</td><td class="case-cell" data-do="65" data-sh="220" data-case="C78">C78</td><td class="case-cell" data-do="70" data-sh="220" data-case="C88">C88</td><td class="case-cell" data-do="75" data-sh="220" data-case="C98">C98</td></tr>
+          <tr><th>240</th><td class="case-cell" data-do="30" data-sh="240" data-case="C09">C09</td><td class="case-cell" data-do="35" data-sh="240" data-case="C19">C19</td><td class="case-cell" data-do="40" data-sh="240" data-case="C29">C29</td><td class="case-cell" data-do="45" data-sh="240" data-case="C39">C39</td><td class="case-cell" data-do="50" data-sh="240" data-case="C49">C49</td><td class="case-cell" data-do="55" data-sh="240" data-case="C59">C59</td><td class="case-cell" data-do="60" data-sh="240" data-case="C69">C69</td><td class="case-cell" data-do="65" data-sh="240" data-case="C79">C79</td><td class="case-cell" data-do="70" data-sh="240" data-case="C89">C89</td><td class="case-cell" data-do="75" data-sh="240" data-case="C99">C99</td></tr>
+        </tbody>
+      </table>
 
-  <h2>Generated Python</h2>
-  <div class="codebox" id="codeOut"># Your calls will appear here…</div>
-  <p class="muted">Files will save under: e:/0_PHD_City_University/HPC/Normalised_CumEnergy_Plots</p>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="includeC100"> include C100 in actual plot</label>
+        <button id="selectAll">Select batch</button>
+        <button id="selectNone">Clear batch</button>
+        <button id="clearAll">Clear all</button>
+      </div>
 
-  <div class="tabs">
-    <button class="tabbtn active" id="tabNorm">Normalised</button>
-    <button class="tabbtn" id="tabAct">Actual</button>
-  </div>
-  <div id="plots">
-    <div id="plot-normalised"></div>
-    <div id="plot-actual" style="display:none;"></div>
-  </div>
+      <div id="meta" class="muted"></div>
+      <div id="models" class="models"></div>
+    </section>
+
+    <section class="card plotPanel">
+      <div class="plotHead">
+        <div>
+          <h2>Cumulative energy curves</h2>
+          <div class="muted">Normalised and actual cumulative energy for the selected cases.</div>
+        </div>
+        <button id="plotSelected" class="primary">Plot selected</button>
+      </div>
+      <div class="tabs">
+        <button class="tabbtn active" id="tabNorm">Normalised</button>
+        <button class="tabbtn" id="tabAct">Actual</button>
+      </div>
+      <div id="plots">
+        <div id="plot-normalised"></div>
+        <div id="plot-actual" style="display:none;"></div>
+      </div>
+    </section>
+  </main>
 
 <script>
 /* ===================== globals & helpers ===================== */
@@ -79,7 +248,7 @@ const DATA = {"IPE270": {"S235": {"6": {"c100": {"cycle": [1, 2, 3, 4, 5, 6, 7, 
 const $ = sel => document.querySelector(sel);
 
 /* sizing / fonts */
-const BASE_HEIGHT = 600;    // identical height for both
+const BASE_HEIGHT = Math.min(600, Math.max(500, window.innerHeight - 205));
 const BASE_FONT   = 16;
 const TITLE_FONT  = 22;
 const TICK_FONT   = 12;
@@ -93,8 +262,11 @@ const stodSel    = $("#stod");
 const includeC100= $("#includeC100");
 const modelsDiv  = $("#models");
 const metaDiv    = $("#meta");
-const filterInput= $("#modelFilter");
+const pickCase   = $("#pickCase");
 const codeOut    = $("#codeOut");
+const caseCells  = Array.from(document.querySelectorAll("#caseMatrix td.case-cell"));
+const selectedCases = new Set();
+let defaultSelectionApplied = false;
 
 const tabNorm = $("#tabNorm");
 const tabAct  = $("#tabAct");
@@ -105,15 +277,21 @@ const plotAct = document.getElementById("plot-actual");
 function formatModelLabel(m) {
   const rx = /(C\d+).*?do=(\d+)%h.*?S=(\d+)%h/i;
   const mt = m.match(rx);
-  return mt ? `${mt[1]} — do=${mt[2]}%h, S=${mt[3]}%h` : m;
+  return mt ? `${mt[1]}: do=${mt[2]}%h, S=${mt[3]}%h` : m;
 }
 
 /* size enforcement */
+function resizeDisplayedPlot(div) {
+  if (!div || !div._fullLayout) return;
+  Plotly.relayout(div, {autosize: false, height: BASE_HEIGHT});
+  if (div.offsetParent !== null && div.clientWidth > 0) {
+    Plotly.Plots.resize(div);
+  }
+}
+
 function enforceSameSize() {
-  Plotly.relayout(plotNorm, {autosize: false, height: BASE_HEIGHT});
-  Plotly.relayout(plotAct,  {autosize: false, height: BASE_HEIGHT});
-  Plotly.Plots.resize(plotNorm);
-  Plotly.Plots.resize(plotAct);
+  resizeDisplayedPlot(plotNorm);
+  resizeDisplayedPlot(plotAct);
 }
 
 /* tabs */
@@ -137,16 +315,45 @@ function init() {
   profileSel.addEventListener('change', onProfile);
   gradeSel  .addEventListener('change', onGrade);
   stodSel   .addEventListener('change', onStoD);
-  $("#applyFilter").addEventListener('click', renderModels);
-  $("#clearFilter").addEventListener('click', () => { filterInput.value=""; renderModels(); });
   $("#selectAll").addEventListener('click', () => toggleAll(true));
   $("#selectNone").addEventListener('click', () => toggleAll(false));
-  includeC100.addEventListener('change', renderModels);
-  $("#genNormalised").addEventListener('click', () => generateCall("normalised"));
-  $("#genActual").addEventListener('click',     () => generateCall("actual"));
+  $("#clearAll").addEventListener('click', () => {
+    selectedCases.clear();
+    defaultSelectionApplied = true;
+    renderModels();
+    plotSelected();
+  });
+  includeC100.addEventListener('change', () => { renderModels(); plotSelected(); });
   $("#plotSelected").addEventListener('click',  plotSelected);
+  if (pickCase) {
+    pickCase.addEventListener('change', () => {
+      const cid = pickCase.value;
+      if (cid === "C100") {
+        includeC100.checked = true;
+      } else if (cid) {
+        const { p, g, s } = currentBatchNode();
+        selectedCases.add(selectionKey(p, g, s, cid));
+      }
+      renderModels();
+      plotSelected();
+    });
+  }
+  caseCells.forEach(td => {
+    td.addEventListener("click", () => {
+      if (td.classList.contains("disabled")) return;
+      const cid = td.dataset.case;
+      if (!cid) return;
+      const { p, g, s } = currentBatchNode();
+      const key = selectionKey(p, g, s, cid);
+      if (selectedCases.has(key)) selectedCases.delete(key);
+      else selectedCases.add(key);
+      if (pickCase) pickCase.value = cid;
+      renderModels();
+      plotSelected();
+    });
+  });
   if (profiles.length) { profileSel.value = profiles[0]; onProfile(); }
-  setTimeout(enforceSameSize, 0);
+  setTimeout(plotSelected, 0);
 }
 
 function onProfile() {
@@ -173,27 +380,165 @@ function currentBatchNode() {
 
 function onStoD() { renderModels(); }
 
+function batchKey(p, g, s) {
+  return `${p}||${g}||${s}`;
+}
+
+function selectionKey(p, g, s, cid) {
+  return `${batchKey(p, g, s)}||${cid}`;
+}
+
+function parseSelectionKey(key) {
+  const parts = String(key || "").split("||");
+  if (parts.length !== 4) return null;
+  return { p: parts[0], g: parts[1], s: Number(parts[2]), cid: parts[3] };
+}
+
+function nodeForBatch(p, g, s) {
+  return (DATA[p] && DATA[p][g] && DATA[p][g][s]) ? DATA[p][g][s] : null;
+}
+
+function batchLabel(p, g, s) {
+  return `${s}.${p}.${g}`;
+}
+
+function caseOrder(cid) {
+  return cid === "C100" ? 100 : (parseInt(String(cid).slice(1), 10) || 0);
+}
+
+function caseIdFromModelName(name) {
+  const mt = String(name || "").match(/^(C\d{2,3})_/i);
+  return mt ? mt[1].toUpperCase() : null;
+}
+
+function caseIdsForNode(node) {
+  if (!node || !node.models) return [];
+  return Object.keys(node.models)
+    .map(caseIdFromModelName)
+    .filter(cid => cid && cid !== "C100")
+    .sort((a, b) => caseOrder(a) - caseOrder(b));
+}
+
+function modelForCase(caseId, node) {
+  if (!node || !node.models || caseId === "C100") return null;
+  return Object.keys(node.models).find(m => caseIdFromModelName(m) === caseId) || null;
+}
+
+function selectedCurveRecords() {
+  return Array.from(selectedCases)
+    .map(parseSelectionKey)
+    .filter(Boolean)
+    .map(sel => {
+      const node = nodeForBatch(sel.p, sel.g, sel.s);
+      const name = modelForCase(sel.cid, node);
+      const rec = name && node ? node.models[name] : null;
+      return Object.assign(sel, { key: selectionKey(sel.p, sel.g, sel.s, sel.cid), node, name, rec });
+    })
+    .filter(item => item.node && item.name && item.rec)
+    .sort((a, b) =>
+      a.s - b.s ||
+      String(a.p).localeCompare(String(b.p)) ||
+      String(a.g).localeCompare(String(b.g)) ||
+      caseOrder(a.cid) - caseOrder(b.cid)
+    );
+}
+
+function formatSelectionLabel(item) {
+  const detail = formatModelLabel(item.name).replace(/^C\d{2,3}:\s*/, "");
+  return `${batchLabel(item.p, item.g, item.s)}.${item.cid}: ${detail}`;
+}
+
+function selectedBatchRecords(items) {
+  const out = [];
+  const seen = new Set();
+  items.forEach(item => {
+    const key = batchKey(item.p, item.g, item.s);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push({ p: item.p, g: item.g, s: item.s, node: item.node });
+    }
+  });
+  return out;
+}
+
+function fillCasePicker(node) {
+  if (!pickCase) return;
+  const previous = pickCase.value;
+  const ids = caseIdsForNode(node);
+  const items = node && node.c100 ? [...ids, "C100"] : ids;
+  pickCase.innerHTML = "";
+  items.forEach(cid => pickCase.appendChild(new Option(cid, cid)));
+  if (items.includes(previous)) pickCase.value = previous;
+  else if (items.includes("C01")) pickCase.value = "C01";
+  else if (items.length) pickCase.value = items[0];
+}
+
+function updateCaseCellStates(availableCases) {
+  const { p, g, s } = currentBatchNode();
+  caseCells.forEach(td => {
+    const cid = td.dataset.case;
+    const available = availableCases.has(cid);
+    td.classList.toggle("disabled", !available);
+    td.classList.toggle("sel", selectedCases.has(selectionKey(p, g, s, cid)) && available);
+  });
+}
+
 function renderModels() {
   const { p, g, s, node } = currentBatchNode();
   modelsDiv.innerHTML = "";
   if (!node) { metaDiv.textContent = "No data for the selected batch."; return; }
 
-  const substr = (filterInput.value || "").trim();
-  let modelNames = Object.keys(node.models).filter(m => !/C100/i.test(m));
-  if (substr) modelNames = modelNames.filter(m => m.includes(substr));
+  const availableIds = caseIdsForNode(node);
+  const available = new Set(availableIds);
+  if (!defaultSelectionApplied) {
+    ["C01", "C21"].forEach(cid => {
+      if (available.has(cid)) selectedCases.add(selectionKey(p, g, s, cid));
+    });
+    defaultSelectionApplied = true;
+  }
+  fillCasePicker(node);
+  updateCaseCellStates(available);
 
-  metaDiv.textContent = `Batch: ${p}, ${g}, StoD=${s} • Models: ${modelNames.length} (C100 present: ${node.c100 ? "yes" : "no"})`;
+  const selected = selectedCurveRecords();
+  const currentBatchSelected = selected.filter(item => item.p === p && item.g === g && item.s === s).length;
 
-  modelNames.forEach(m => {
-    const id = "m_" + m.replace(/[^a-zA-Z0-9_-]/g, "_");
+  metaDiv.textContent = `Current batch: ${p}, ${g}, StoD=${s}. Current batch cases: ${currentBatchSelected}. Total selected curves: ${selected.length}.`;
+
+  if (!selected.length) {
+    const empty = document.createElement("span");
+    empty.className = "muted";
+    empty.textContent = "No reduced web section cases selected.";
+    modelsDiv.appendChild(empty);
+    return;
+  }
+
+  selected.forEach(item => {
+    const id = "m_" + item.key.replace(/[^a-zA-Z0-9_-]/g, "_");
     const label = document.createElement("label");
-    label.innerHTML = `<input type="checkbox" id="${id}" data-name="${m}"> ${formatModelLabel(m)}`;
+    label.innerHTML = `<input type="checkbox" id="${id}" checked data-key="${item.key}" data-case="${item.cid}" data-name="${item.name}"> ${formatSelectionLabel(item)}`;
+    const cb = label.querySelector("input");
+    cb.addEventListener("change", () => {
+      if (!cb.checked) {
+        selectedCases.delete(item.key);
+        renderModels();
+        plotSelected();
+      }
+    });
     modelsDiv.appendChild(label);
   });
 }
 
-function toggleAll(state) { modelsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = state); }
-function selectedModels() { return Array.from(modelsDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.getAttribute('data-name')); }
+function toggleAll(state) {
+  const { p, g, s, node } = currentBatchNode();
+  caseIdsForNode(node).forEach(cid => {
+    const key = selectionKey(p, g, s, cid);
+    if (state) selectedCases.add(key);
+    else selectedCases.delete(key);
+  });
+  renderModels();
+  plotSelected();
+}
+function selectedModels() { return selectedCurveRecords().map(item => item.name); }
 
 function generateCall(plotType) {
   const { p, g, s } = currentBatchNode();
@@ -207,7 +552,7 @@ function generateCall(plotType) {
                 .replace("{4}", plotType);
   const both = [ line.replace('plot_type="normalised"', 'plot_type="normalised"'),
                  line.replace('plot_type="normalised"', 'plot_type="actual"') ].join("\n");
-  codeOut.textContent = both;
+  if (codeOut) codeOut.textContent = both;
 }
 
 /* ===================== animation & plotting ===================== */
@@ -291,8 +636,7 @@ function buildAnimatedPlot(div, traces, layout, totalMs = ANIM_MS) {
   const frames = makeFrames(traces, MAX_FRAMES);
 
   Plotly.newPlot(div, frames[0].data, layout, {responsive: true}).then(() => {
-    Plotly.relayout(div, {autosize: false, height: BASE_HEIGHT});
-    Plotly.Plots.resize(div);
+    resizeDisplayedPlot(div);
 
     const frameDur = Math.max(16, Math.floor(totalMs / frames.length));
     Plotly.animate(div, frames, {
@@ -303,26 +647,24 @@ function buildAnimatedPlot(div, traces, layout, totalMs = ANIM_MS) {
 }
 
 function plotSelected() {
-  const { node } = currentBatchNode();
-  if (!node) return;
+  const selected = selectedCurveRecords();
   const wantC100 = includeC100.checked;
-  const models = selectedModels();
 
   // ---------- Normalised ----------
   const normTraces = [];
-  models.forEach(m => {
-    const rec = node.models[m];
+  selected.forEach(item => {
+    const rec = item.rec;
     if (rec && rec.normalised) {
       normTraces.push({ x: rec.cycle, y: rec.normalised, mode: "lines",
-                        name: formatModelLabel(m), legendrank: 10 });
+                        name: formatSelectionLabel(item), legendrank: 10 + caseOrder(item.cid) });
     }
   });
-  if (node.c100) {
-    const x = node.c100.cycle || [];
+  if (selected.length) {
+    const x = (selected[0].node.c100 && selected[0].node.c100.cycle) || selected[0].rec.cycle || [];
     if (x.length) {
       normTraces.push({
         x: x, y: x.map(_ => 1.0), mode: "lines",
-        name: "Solid beam (C100)",
+        name: "Solid beam baseline (C100)",
         line: { color: "black", dash: "dash", width: 3 },
         legendrank: 0
       });
@@ -337,19 +679,23 @@ function plotSelected() {
 
   // ---------- Actual ----------
   const actTraces = [];
-  models.forEach(m => {
-    const rec = node.models[m];
+  selected.forEach(item => {
+    const rec = item.rec;
     if (rec && rec.actual) {
       actTraces.push({ x: rec.cycle, y: rec.actual, mode: "lines",
-                       name: formatModelLabel(m), legendrank: 10 });
+                       name: formatSelectionLabel(item), legendrank: 10 + caseOrder(item.cid) });
     }
   });
-  if (wantC100 && node.c100 && node.c100.cycle && node.c100.actual) {
-    actTraces.push({
-      x: node.c100.cycle, y: node.c100.actual, mode: "lines",
-      name: "Solid beam (C100)",
-      line: { color: "black", dash: "dash", width: 3 },
-      legendrank: 0
+  if (wantC100) {
+    selectedBatchRecords(selected).forEach((batch, idx) => {
+      if (batch.node.c100 && batch.node.c100.cycle && batch.node.c100.actual) {
+        actTraces.push({
+          x: batch.node.c100.cycle, y: batch.node.c100.actual, mode: "lines",
+          name: `${batchLabel(batch.p, batch.g, batch.s)}.C100`,
+          line: { color: "black", dash: "dash", width: 2 },
+          legendrank: idx
+        });
+      }
     });
   }
   const actLayout = {
