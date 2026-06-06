@@ -4,11 +4,11 @@
 
 ## Live GUI
 
-[Open the cumulative energy dissipation GUI](https://gitmeysambayat.github.io/EnergyDissipation-RWS_Connections/)
+[Open the cumulative energy dissipation GUI](https://gitmeysambayat.github.io/RWS-PhD-Thesis-GUIs/database-guis/energy-dissipation/)
 
 ## Purpose
 
-This Chapter 4 companion GUI compares cumulative energy dissipation across selected RWS connection batches and cases. It supports selection by span-to-depth ratio, IPE profile, steel grade, and case ID, with normalised and actual cumulative energy plot tabs.
+This complementary thesis GUI compares cumulative hysteretic energy dissipation across selected RWS connection batches and cases. It supports selection by span-to-depth ratio, IPE profile, steel grade, and case ID, with normalised and actual cumulative energy plot tabs.
 
 The selected-case matrix uses the same opening-geometry notation as the thesis workflow, including <i>d</i><sub>o</sub>/<i>h</i> and <i>S</i>/<i>h</i>.
 
